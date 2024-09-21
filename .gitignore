@@ -1,6 +1,6 @@
 *.jar
 
-./out/*.ll
-./out/*.s
+out/*.ll
+out/*.s
 go.mod
 go.sum
