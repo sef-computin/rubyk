@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/sef-comp/truby-compiler/codegen"
 	gen "github.com/sef-comp/truby-compiler/codegen"
 	p "github.com/sef-comp/truby-compiler/parser"
-	"os"
 )
 
 func main() {
@@ -31,15 +33,18 @@ func main() {
 	stream := antlr.NewCommonTokenStream(lexer, 0)
 	parser := p.NewRubyKParser(stream)
 
+  parser.BuildParseTrees = true
+
 	// Парсинг программы
 	tree := parser.Program()
 
+  codegen.DrawTree("tree", tree)
 	// children := tree.GetChildren()
 
 	// fmt.Println()
 
 	// Генерация кода LLVM IR с использованием llir/llvm
-	visitor := gen.NewVisitor(true)
+	visitor := gen.NewVisitor(false)
 
 	visitor.VisitProgram(tree.(*p.ProgramContext))
 
