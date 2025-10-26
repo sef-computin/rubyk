@@ -2,132 +2,167 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef enum {
-  ID_FUNCTION,
-  ID_GLOBAL,
-  ID,
-  FLOAT,
-  INT,
-  WS,
-  ML_COMMENT,
-  SL_COMMENT,
-  LEFT_SBRACKET,
-  RIGHT_SBRACKET,
-  NOT,
-  OR,
-  AND,
-  BIT_SHR,
-  BIT_XOR,
-  BIT_OR,
-  BIT_AND,
-  EXP_ASSIGN,
-  MOD_ASSIGN,
-  DIV_ASSIGN,
-  MUL_ASSIGN,
-  MINUS_ASSIGN,
-  PLUS_ASSIGN,
-  ASSIGN,
-  GREATER_EQUAL,
-  LESS_EQUAL,
-  LESS,
-  GREATER,
-  NOT_EQUAL,
-  EQUAL,
-  EXP,
-  MOD,
-  DIV,
-  MUL,
-  MINUS,
-  PLUS,
-  FALSE,
-  TRUE,
-  FOR,
-  BREAK,
-  RETRY,
-  WHILE,
-  UNLESS,
-  ELSEIF,
-  ELSE,
-  IF,
-  PIR,
-  RETURN,
-  DEF,
-  END,
-  CRLF,
-  SEMICOLON,
-  COMMA,
-  LITERAL,
-  ESCAPED_QUOTE,
-  TOKEN_EOF,
-} TokenType;
-
-typedef struct Token{
-  TokenType type;
-  char *value;
-  ssize_t size;
-} Token;
+#include "lexer.h"
 
 
-char *RUBY_KEYWORDS[] = {
-  "if", "while", "for", "break", "end", "continue", "return", "else",
-  "def", "static", "enum", "class", "default", "case",
-  "int", "float", "char", "string", "bool", "nil", NULL
-};
+void _append_token(token_t* token_list, token_type type, char *val){
+  token_t *last = token_list;
+  while (last->next != NULL) last = last->next;
 
-Token *newToken(TokenType type, char *value, ssize_t size){
-  Token *token = malloc(sizeof(Token));
-  token->type = type;
-  token->value = malloc(sizeof(char) * size);
-  strncpy(token->value, value, size);
-  *(token->value + size) = '\0';
+  last->next = malloc(sizeof(token_t));
+  last = last->next;
 
-  token->size = size;
+  last->type = type;
+  last->value = val;
+}
 
-  return token;
-};
+token_type _get_word_type(char *word, int word_len){
+  switch (word_len) {
+    case 2:
+      if(strncmp(word, "if", word_len) == 0){
+        return IF;
+      };
+      break;
 
-Token *_addToken(Token *token_list, int *cap, Token *new_token, int idx){
-  if (idx >= (*cap)-1){
-    *(cap) *= 1.5;
-    token_list = (Token *)realloc(token_list, sizeof(Token)*(*cap));
+    case 3:
+      if(strncmp(word, "def", word_len) == 0){
+        return DEF;
+      };
+      if(strncmp(word, "end", word_len) == 0){
+        return END;
+      };
+      if(strncmp(word, "for", word_len) == 0){
+        return FOR;
+      };
+      if(strncmp(word, "nil", word_len) == 0){
+        return TOKEN_NIL;
+      };
+      break;
+
+    case 4:
+      if(strncmp(word, "else", word_len) == 0){
+        return ELSE;
+      };
+      break;
+
+    case 5:
+      if(strncmp(word, "while", word_len) == 0){
+        return WHILE;
+      };
+      break;
+
+    default:
+      break;
   }
-
-  token_list[idx] = *new_token; 
-  return token_list;
-};
-
-TokenType _getWordType(char *word, int word_len){
-
-
   return ID;
 }
 
-Token *lexer(FILE *src_file){
+
+token_t *lexer(FILE *src_file){
   if (src_file == NULL){
     return NULL;
   }
 
-  int token_list_cap = 10;
-  Token *token_list = malloc(sizeof(Token) * 10);
-  int tokens_total = 0;
+  token_t *head = malloc(sizeof(token_t));
 
   char *line = NULL;
-  size_t linecap = 0;
   ssize_t linelen;
+  size_t linecap;
 
   while ((linelen = getline(&line, &linecap, src_file)) != -1){
     while (linelen > 0 && ( line[linelen-1] == '\n' || 
                             line[linelen-1] == '\r'))
       linelen--;
 
-    ssize_t word_start = -1;
+    ssize_t lexema_start = -1;
     for (ssize_t i = 0; i < linelen;){
       char current_symbol = line[i];
-      
+
+
+      switch (current_symbol) {
+        case '+':
+          if (i+1 < linelen && line[i+1] == '='){
+            i++;
+            _append_token(head, PLUS_ASSIGN, NULL);
+          } else {
+            _append_token(head, PLUS, NULL);
+          }
+          break;
+        case '-':
+          if (i+1 < linelen && line[i+1] == '='){
+            i++;
+            _append_token(head, MINUS_ASSIGN, NULL);
+          } else {
+            _append_token(head, MINUS, NULL);
+          }
+          break;
+        case '*':
+          if (i+1 < linelen && line[i+1] == '='){
+            i++;
+            _append_token(head, MUL_ASSIGN, NULL);
+          } else {
+            _append_token(head, MUL, NULL);
+          }
+          break;
+        case '%':
+          if (i+1 < linelen && line[i+1] == '='){
+            i++;
+            _append_token(head, MOD_ASSIGN, NULL);
+          } else {
+            _append_token(head, MOD, NULL);
+          }
+          break;
+        case '/':
+          if (i+1 < linelen && line[i+1] == '='){
+            i++;
+            _append_token(head, DIV_ASSIGN, NULL);
+          } else {
+            _append_token(head, DIV, NULL);
+          }
+          break;
+        case '>':
+          if (i+1 < linelen && line[i+1] == '='){
+            i++;
+            _append_token(head, GREATER_EQUAL, NULL);
+          } else {
+            _append_token(head, GREATER, NULL);
+          }
+          break;
+        case '<':
+          if (i+1 < linelen && line[i+1] == '='){
+            i++;
+            _append_token(head, LESS_EQUAL, NULL);
+          } else {
+            _append_token(head, LESS, NULL);
+          }
+          break;
+        case '[':
+          _append_token(head, LEFT_SBRACKET, NULL);
+          break;
+        case ']':
+          _append_token(head, RIGHT_SBRACKET, NULL);
+          break;
+        case '=':
+          if (i+1 < linelen && line[i+1] == '='){
+            i++;
+            _append_token(head, EQUAL, NULL);
+          } else{
+            _append_token(head, ASSIGN, NULL);
+          }
+          break;
+        case ',':
+          _append_token(head, COMMA, NULL);
+          break;
+        case '.':
+          _append_token(head, DOT, NULL);
+          break;
+        default:
+          break;
+      }
+
       while (isalpha(current_symbol) || isdigit(current_symbol)){
-        if (word_start == -1){
-          word_start = i;
+        if (lexema_start == -1){
+          lexema_start = i;
         }
 
         i++;
@@ -135,109 +170,42 @@ Token *lexer(FILE *src_file){
         current_symbol = line[i];
       }
 
-      
-      if (word_start >= 0){
-        TokenType type = _getWordType(&line[word_start], (i-word_start));
-        token_list = _addToken(token_list, &token_list_cap, newToken(type, &line[word_start], (i - word_start)), tokens_total++);
-        word_start = -1;
-      }
-      
-      switch (current_symbol) {
-        case '+':
-          if (i+1 < linelen && line[i+1] == '='){
-            i++;
-            token_list = _addToken(token_list, &token_list_cap, newToken(PLUS_ASSIGN, "+=", 2), tokens_total++);
-          } else {
-            token_list = _addToken(token_list, &token_list_cap, newToken(PLUS, "+", 1), tokens_total++);
-          }
-          break;
-        case '-':
-          if (i+1 < linelen && line[i+1] == '='){
-            i++;
-            token_list = _addToken(token_list, &token_list_cap, newToken(MINUS_ASSIGN, "-=", 2), tokens_total++);
-          } else {
-            token_list = _addToken(token_list, &token_list_cap, newToken(MINUS, "-", 1), tokens_total++);
-          }
-          break;
-        case '*':
-          if (i+1 < linelen && line[i+1] == '='){
-            i++;
-            token_list = _addToken(token_list, &token_list_cap, newToken(MUL_ASSIGN, "*=", 2), tokens_total++);
-          } else {
-            token_list = _addToken(token_list, &token_list_cap, newToken(MUL, "*", 1), tokens_total++);
-          }
-          break;
-        case '%':
-          if (i+1 < linelen && line[i+1] == '='){
-            i++;
-            token_list = _addToken(token_list, &token_list_cap, newToken(MOD_ASSIGN, "%=", 2), tokens_total++);
-          } else {
-            token_list = _addToken(token_list, &token_list_cap, newToken(MOD, "%", 1), tokens_total++);
-          }
-          break;
-        case '/':
-          if (i+1 < linelen && line[i+1] == '='){
-            i++;
-            token_list = _addToken(token_list, &token_list_cap, newToken(DIV_ASSIGN, "/=", 2), tokens_total++);
-          } else {
-            token_list = _addToken(token_list, &token_list_cap, newToken(DIV, "/", 1), tokens_total++);
-          }
-          break;
-        case '>':
-          if (i+1 < linelen && line[i+1] == '='){
-            i++;
-            token_list = _addToken(token_list, &token_list_cap, newToken(GREATER_EQUAL, ">=", 2), tokens_total++);
-          } else {
-            token_list = _addToken(token_list, &token_list_cap, newToken(GREATER, ">", 1), tokens_total++);
-          }
-          break;
-        case '<':
-          if (i+1 < linelen && line[i+1] == '='){
-            i++;
-            token_list = _addToken(token_list, &token_list_cap, newToken(LESS_EQUAL, "<=", 2), tokens_total++);
-          } else {
-            token_list = _addToken(token_list, &token_list_cap, newToken(LESS, "<", 1), tokens_total++);
-          }
-          break;
-        case '[':
-          token_list = _addToken(token_list, &token_list_cap, newToken(LEFT_SBRACKET, "[", 1), tokens_total++);
-          break;
-        case ']':
-          token_list = _addToken(token_list, &token_list_cap, newToken(RIGHT_SBRACKET, "]", 1), tokens_total++);
-          break;
-        case '=':
-          if (i+1 < linelen && line[i+1] == '='){
-            i++;
-            token_list = _addToken(token_list, &token_list_cap, newToken(EQUAL, "==", 2), tokens_total++);
-          } else{
-            token_list = _addToken(token_list, &token_list_cap, newToken(ASSIGN, "=", 1), tokens_total++);
-          }
-          break;
-        case ',':
-          token_list = _addToken(token_list, &token_list_cap, newToken(COMMA, "[", 1), tokens_total++);
-          break;
-        default:
-          break;
+      if (lexema_start >= 0){
+        ssize_t lexema_len = i - lexema_start;
+        token_type type = _get_word_type(&line[lexema_start], lexema_len);
+        char *lexema = malloc(lexema_len + 1);
+        strncpy(lexema, &line[lexema_start], lexema_len);
+        lexema[lexema_len] = '\0';
+        _append_token(head, type, lexema);
+        lexema_start = -1;
       }
 
       i++;
     }
+    _append_token(head, CRLF, NULL);
 
-    if (word_start >= 0){
-      token_list = _addToken(token_list, &token_list_cap, newToken(ID, &line[word_start], (linelen - word_start)), tokens_total++);
-      word_start = -1;
-    }
   }
 
-  return _addToken(token_list, &token_list_cap, newToken(TOKEN_EOF, "\0", 0), tokens_total++);
+  _append_token(head, TOKEN_EOF, NULL);
+
+  token_t *ret = head->next;
+  free(head);
+  return ret;
 }
 
+void free_token(token_t *token){
+  if (token->value != NULL){
+    free(token->value);
+  }
+  free(token);
+}
 
-void printToken(Token token){
-  printf("Token: \n\t");
-  printf("type: %x\n\t", token.type);
-  printf("size: %zu\n\t", token.size);
-  printf("value: %s\n", token.value);
+void print_token(token_t *token){
+  printf("Token: \n");
+  printf("\ttype: %x\n", token->type);
+  if (token->value != NULL){
+    printf("\tvalue: %s\n", token->value);
+  }
 }
 
 
@@ -246,16 +214,21 @@ int main(){
   if (src == NULL){
     perror("fopen");
   }
+ 
+  token_t *head = lexer(src);
 
-  
-  Token *token_list = lexer(src);
-
-  for (int i = 0; token_list[i].type != TOKEN_EOF; i++){
-    Token token = token_list[i];
-    printToken(token);
-    free(token.value);
+  if (head == NULL){
+    return -1;
   }
-  free(token_list);
+
+  while (head->next != NULL){
+    print_token(head);
+    token_t *t = head;
+
+    head = head->next;
+    free(t);
+  }
+  free(head);
 
   fclose(src);
 }
